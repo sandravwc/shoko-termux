@@ -1,0 +1,4 @@
+#!/data/data/com.termux/files/usr/bin/sh
+# runit service: export the USB SSD over NFSv3 to the LAN (userspace, rclone). No auth: LAN only.
+exec 2>&1
+exec rclone serve nfs /storage/EABF-DEDA --addr 192.168.1.106:2049 --nfs-cache-type disk --vfs-cache-mode writes --umask 000

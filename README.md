@@ -41,6 +41,7 @@ interpreter, no ptrace.
 ```txt
 deploy/sv-shoko.run       runit service, sets LD_PRELOAD + DOTNET_ROOT, execs Shoko.CLI
 deploy/sv-anubis.run      runit service, anubis instance in front of Shoko
+deploy/sv-nfs.run         runit service, SSD exported over NFSv3 to the LAN (rclone, userspace)
 deploy/anubis.env         anubis :8924 -> :8111
 deploy/haproxy.cfg        "backend shoko", symlinked into ~/haproxy.d/
 deploy/haproxy-base.cfg   reference copy of the box-level ~/haproxy.d/00-base.cfg
@@ -135,7 +136,31 @@ Android mounts it at `/storage/XXXX-XXXX` (FUSE, `rw` for Termux after
 path. No symlinks, no ownership, no permissions on that filesystem; Shoko
 does not need them.
 
-### 6. Public: haproxy + anubis (optional)
+### 6. Export the SSD over NFS (optional)
+
+No kernel nfsd for apps, so userspace: `rclone serve nfs` (NFSv3, Go). No
+auth, so LAN bind only. Handles cached on disk so file handles survive a
+service restart without stale mounts on the clients.
+
+```sh
+pkg install rclone
+mkdir -p $PREFIX/var/service/nfs
+cp ~/shoko/repo/deploy/sv-nfs.run $PREFIX/var/service/nfs/run   # edit the /storage path and LAN IP
+sv up nfs
+```
+
+Client (Linux), port must be given since it is not 2049 on portmapper:
+
+```sh
+sudo mkdir -p /mnt/shoko_ds1
+echo '192.168.1.106:/ /mnt/shoko_ds1 nfs port=2049,mountport=2049,tcp,nolock,vers=3,nofail,_netdev,x-systemd.automount 0 0' | sudo tee -a /etc/fstab
+sudo systemctl daemon-reload && sudo mount /mnt/shoko_ds1
+```
+
+Faster than sshfs (no crypto on the phone), slower than a real NAS: FUSE on
+Android, then rclone, then the NFS stack. Fine for playback and copies.
+
+### 7. Public: haproxy + anubis (optional)
 
 One haproxy for the box, one anubis per app. haproxy loads a directory:
 
@@ -159,6 +184,7 @@ keeps one A record current. Cert must cover it: reissue with a wildcard,
 
 - Logs: `$PREFIX/var/log/sv/shoko/current`, `~/.shoko/Shoko.CLI/logs/`
 - Restart: `sv restart shoko` (works now, TERM reaches the process)
+- NFS export: `sv status nfs`, log `$PREFIX/var/log/sv/nfs/current`
 - Update Shoko: publish again, `scp` over `~/shoko/app`, `grun -c ~/shoko/app/Shoko.CLI`, restart
 - Update runtime: rerun `dotnet-install.sh`, `grun -c ~/shoko/dotnet/dotnet`
 - Update shim: `git pull`, rebuild (step 3), restart

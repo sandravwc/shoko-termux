@@ -60,7 +60,7 @@ All on the phone in Termux unless said otherwise. `$PREFIX` is Termux's.
 
 ```sh
 pkg install glibc-repo
-pkg install glibc-runner libicu-glibc gcc-glibc binutils-glibc   # gcc only for the shim
+pkg install glibc-runner libicu-glibc tzdata gcc-glibc binutils-glibc   # gcc only for the shim
 ```
 
 `glibc-runner` installs a full glibc under `$PREFIX/glibc`. `grun -c <binary>`
@@ -203,3 +203,6 @@ keeps one A record current. Cert must cover it: reissue with a wildcard,
   missing, or netlink being denied.
 - `SIOCGIFHWADDR` is denied too, so MAC addresses come back empty. Nothing
   in Shoko cares.
+- `TimeZoneNotFoundException: 'Tokyo Standard Time'` on AniDB jobs: .NET reads
+  `/usr/share/zoneinfo`, Termux has `$PREFIX/share/zoneinfo` (`pkg install tzdata`).
+  `TZDIR` in the run script fixes it.

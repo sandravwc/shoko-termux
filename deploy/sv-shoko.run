@@ -2,7 +2,7 @@
 # runit service: Shoko Server, glibc build run natively via glibc-runner (no proot).
 exec 2>&1
 export LD_PRELOAD=$HOME/shoko/libifaddrs_shim.so    # glibc-only .so: never export in a bionic shell
-export DOTNET_ROOT=$HOME/shoko/dotnet TMPDIR=$PREFIX/tmp
+export DOTNET_ROOT=$HOME/shoko/dotnet TMPDIR=$PREFIX/tmp TZDIR=$PREFIX/share/zoneinfo   # .NET wants /usr/share/zoneinfo
 export DOTNET_gcServer=0 DOTNET_GCHeapHardLimit=0x20000000
 cd $HOME/shoko/app
 exec ./Shoko.CLI

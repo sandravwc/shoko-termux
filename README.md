@@ -39,13 +39,13 @@ interpreter, no ptrace.
 ## Layout
 
 ```txt
-deploy/sv-shoko.run       runit service, sets LD_PRELOAD + DOTNET_ROOT, execs Shoko.CLI
+deploy/sv-shoko.run       runit service, sets DOTNET_ROOT/TZDIR, execs Shoko.CLI
 deploy/sv-anubis.run      runit service, anubis instance in front of Shoko
 deploy/sv-nfs.run         runit service, SSD exported over NFSv3 to the LAN (rclone, userspace)
 deploy/anubis.env         anubis :8924 -> :8111
 deploy/haproxy.cfg        "backend shoko", symlinked into ~/haproxy.d/
 deploy/haproxy-base.cfg   reference copy of the box-level ~/haproxy.d/00-base.cfg
-shim/ifaddrs_shim.c       getifaddrs/if_nametoindex over ioctl, LD_PRELOADed into Shoko
+shim/ifaddrs_shim.c       getifaddrs/if_nametoindex over ioctl, linked into Shoko.CLI via patchelf
 ```
 
 On the Poco, outside the repo: `~/shoko/app` (Shoko publish output),
@@ -60,7 +60,7 @@ All on the phone in Termux unless said otherwise. `$PREFIX` is Termux's.
 
 ```sh
 pkg install glibc-repo
-pkg install glibc-runner libicu-glibc gcc-glibc binutils-glibc   # gcc only for the shim
+pkg install glibc-runner libicu-glibc patchelf-glibc gcc-glibc binutils-glibc   # gcc only for the shim
 ```
 
 `glibc-runner` installs a full glibc under `$PREFIX/glibc`. `grun -c <binary>`
@@ -111,7 +111,14 @@ git clone https://github.com/sandravwc/shoko-termux ~/shoko/repo
 cd ~/shoko/repo/shim
 env -u LD_PRELOAD PATH=$PREFIX/glibc/bin:$PATH gcc -O2 -shared -fPIC -o ~/shoko/libifaddrs_shim.so ifaddrs_shim.c
 env -u LD_PRELOAD PATH=$PREFIX/glibc/bin:$PATH gcc -O2 -DTEST -o /tmp/t ifaddrs_shim.c && env -u LD_PRELOAD /tmp/t   # prints interfaces, OK
+env -u LD_PRELOAD $PREFIX/glibc/bin/patchelf --add-needed ~/shoko/libifaddrs_shim.so ~/shoko/app/Shoko.CLI   # Shoko stopped, else "Text file busy"
 ```
+
+Linked as `DT_NEEDED`, not `LD_PRELOAD`: Shoko spawns Termux's bionic
+`mediainfo` binary, and a glibc `.so` in the inherited `LD_PRELOAD` makes
+every child fail to link (every file "failed to read MediaInfo"). The
+executable's own `NEEDED` list interposes the symbol the same way and
+children never see it. Redo after every `scp` of a new build.
 
 ### 4. Service
 
@@ -183,12 +190,13 @@ keeps one A record current. Cert must cover it: reissue with a wildcard,
 ## Operate
 
 - Logs: `$PREFIX/var/log/sv/shoko/current`, `~/.shoko/Shoko.CLI/logs/`
-- Restart: `sv restart shoko` (works now, TERM reaches the process)
+- Restart: `sv restart shoko`. TERM reaches it, but Shoko drains jobs for 30 s+ and `sv` reports `timeout` after 7 s; wait, or `sv kill shoko` when in a hurry
 - NFS export: `sv status nfs`, log `$PREFIX/var/log/sv/nfs/current`
-- Update Shoko: publish again, `scp` over `~/shoko/app`, `grun -c ~/shoko/app/Shoko.CLI`, restart
+- Update Shoko: publish again, `scp` over `~/shoko/app`, `grun -c ~/shoko/app/Shoko.CLI`, `patchelf --add-needed` (step 3), restart
 - Update runtime: rerun `dotnet-install.sh`, `grun -c ~/shoko/dotnet/dotnet`
 - Update shim: `git pull`, rebuild (step 3), restart
 - `pkill -f Shoko.CLI` from an ssh session kills the session too (matches its own command line); use `pkill -x Shoko.CLI`
+- `MediaInfo.exe` in `app/MediaInfo/` is the Windows binary Shoko ships; on Linux it runs `mediainfo` from `PATH` (`pkg install mediainfo`)
 
 ## Gotchas found on the way
 

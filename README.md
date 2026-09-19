@@ -49,7 +49,7 @@ shim/ifaddrs_shim.c       getifaddrs/if_nametoindex over ioctl, LD_PRELOADed int
 ```
 
 On the Poco, outside the repo: `~/shoko/app` (Shoko publish output),
-`~/shoko/dotnet` (ASP.NET runtime), `~/shoko/libifaddrs_shim.so`,
+`~/shoko/dotnet` (ASP.NET runtime), `~/shoko/libifaddrs_shim.so`, `~/shoko/zoneinfo`,
 `~/.shoko/Shoko.CLI` (settings, SQLite, images, logs).
 
 ## Install
@@ -60,7 +60,7 @@ All on the phone in Termux unless said otherwise. `$PREFIX` is Termux's.
 
 ```sh
 pkg install glibc-repo
-pkg install glibc-runner libicu-glibc tzdata gcc-glibc binutils-glibc   # gcc only for the shim
+pkg install glibc-runner libicu-glibc gcc-glibc binutils-glibc   # gcc only for the shim
 ```
 
 `glibc-runner` installs a full glibc under `$PREFIX/glibc`. `grun -c <binary>`
@@ -204,5 +204,6 @@ keeps one A record current. Cert must cover it: reissue with a wildcard,
 - `SIOCGIFHWADDR` is denied too, so MAC addresses come back empty. Nothing
   in Shoko cares.
 - `TimeZoneNotFoundException: 'Tokyo Standard Time'` on AniDB jobs: .NET reads
-  `/usr/share/zoneinfo`, Termux has `$PREFIX/share/zoneinfo` (`pkg install tzdata`).
-  `TZDIR` in the run script fixes it.
+  `/usr/share/zoneinfo`. Termux has no tzdata package (Android packs all zones
+  into one file). Copy the tree from any Linux box, `TZDIR` in the run script
+  points at it: `rsync -a --exclude right --exclude posix /usr/share/zoneinfo/ poco:shoko/zoneinfo/`

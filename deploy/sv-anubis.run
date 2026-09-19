@@ -1,0 +1,4 @@
+#!/data/data/com.termux/files/usr/bin/sh
+exec 2>&1
+set -a; . $HOME/shoko/repo/deploy/anubis.env; set +a
+exec $HOME/anubis/bin/anubis

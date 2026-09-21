@@ -151,12 +151,21 @@ Client (Linux), port must be given since it is not 2049 on portmapper:
 
 ```sh
 sudo mkdir -p /mnt/shoko_ds1
-echo '192.168.1.106:/ /mnt/shoko_ds1 nfs port=2049,mountport=2049,tcp,nolock,vers=3,nofail,_netdev,x-systemd.automount 0 0' | sudo tee -a /etc/fstab
+echo '192.168.1.106:/ /mnt/shoko_ds1 nfs port=2049,mountport=2049,tcp,nolock,vers=3,soft,timeo=50,retrans=3,nofail,_netdev,x-systemd.automount 0 0' | sudo tee -a /etc/fstab
 sudo systemctl daemon-reload && sudo mount /mnt/shoko_ds1
 ```
 
 Faster than sshfs (no crypto on the phone), slower than a real NAS: FUSE on
 Android, then rclone, then the NFS stack. Fine for playback and copies.
+
+`soft`, not `hard`: rclone's file handles are path-based (that is what the
+disk handle cache persists, handle ↔ path). Rename a directory through the
+mount and every handle the client holds for that tree is `ESTALE`; a kernel
+nfsd keys on inodes and survives that, rclone cannot. With `hard` the client
+retries forever and whatever touched the mount (file manager, shell, `ls`)
+hangs until reboot. With `soft` it fails with `EIO` after ~15 s. Restarting
+rclone does not help, the mapping is the problem. Move or rename big trees on
+the Poco itself (`ssh`, or let Shoko do it), not through the mount.
 
 ### 7. Public: haproxy + anubis (optional)
 

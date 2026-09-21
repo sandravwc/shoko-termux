@@ -1,27 +1,18 @@
 # shoko-termux
 
-[Shoko Server](https://shokoanime.com) on an Android phone, natively in
-Termux. No proot, no Debian, no root. The stock `linux-arm64` glibc build of
-Shoko runs on Termux's glibc repo (`glibc-runner`), plus one 60-line shim for
-what Android's SELinux denies to apps. Runs on a Poco F5 Pro (Snapdragon 8+
-Gen 1, 12 GB) with a USB SSD as the library.
+[Shoko Server](https://shokoanime.com) natively in Termux on a Poco F5 Pro,
+no proot, no root. Stock `linux-arm64` glibc publish output runs on Termux's
+glibc repo (`glibc-runner`: patched ELF interpreter, no ptrace) plus a 60-line
+`getifaddrs` shim for what Android's SELinux denies to apps. USB SSD as the
+library, exported over NFS.
 
-## Why not proot
+Constraints that shaped it:
 
-That was the previous setup and it worked, with a tax: every syscall through
-ptrace (hashing a 900 GB library feels it), a 2 GB Debian rootfs to keep
-updated, `sv restart` never reaching the .NET process, and every
-`proot-distro login` being its own world (SSD bound in one, missing in the
-next). Native means Shoko sees `/storage/XXXX-XXXX` like any Termux program,
-services stop on TERM, one directory to back up.
-
-## Why not bionic
-
-.NET ships a `linux-bionic-arm64` runtime, but Shoko drags in
-`Magick.Native` (ImageMagick + every codec statically linked, built on glibc
-only). Rebuilding that chain with the NDK is days of work and repeats on every
-Magick.NET bump. glibc-runner sidesteps it: same binaries, patched ELF
-interpreter, no ptrace.
+- proot: every syscall through ptrace, `--bind` per login, TERM never reaches
+  the .NET process, 2 GB rootfs. Replaced.
+- `linux-bionic-arm64` RID: official, but `Magick.Native` (ImageMagick +
+  codecs statically linked) exists for glibc only. NDK rebuild of that chain
+  is not worth it.
 
 ```txt
  anywhere                                      poco f5 pro (termux, home LAN)

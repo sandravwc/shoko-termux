@@ -51,7 +51,7 @@ All on the phone in Termux unless said otherwise. `$PREFIX` is Termux's.
 
 ```sh
 pkg install glibc-repo
-pkg install glibc-runner libicu-glibc patchelf-glibc gcc-glibc binutils-glibc   # gcc only for the shim
+pkg install glibc-runner libicu-glibc rhash-glibc patchelf-glibc gcc-glibc binutils-glibc   # gcc only for the shim
 ```
 
 `glibc-runner` installs a full glibc under `$PREFIX/glibc`. `grun -c <binary>`
@@ -81,6 +81,7 @@ mkdir -p ~/shoko && cd ~/shoko
 curl -sSL https://dot.net/v1/dotnet-install.sh | bash -s -- --runtime aspnetcore --channel 8.0 --arch arm64 --install-dir ~/shoko/dotnet
 grun -c ~/shoko/app/Shoko.CLI
 grun -c ~/shoko/dotnet/dotnet
+ln -s $PREFIX/glibc/lib/librhash.so ~/shoko/app/   # native ED2K/CRC hashing, else Shoko falls back to slow C# code
 ```
 
 Self-contained publish (`--self-contained true`) also works and skips the
